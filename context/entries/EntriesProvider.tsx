@@ -2,6 +2,8 @@ import { FC, useEffect, useReducer } from 'react';
 import { entriesApi } from '../../apis';
 import { Entry } from '../../interfaces';
 import { EntriesContext, entriesReducer } from './';
+import {useSnackbar} from 'notistack';
+import { useRouter } from 'next/router';
 export interface EntriesState {
  entries: Entry[];
 }
@@ -11,8 +13,10 @@ const Entries_INITIAL_STATE: EntriesState = {
 }
 
 export const EntriesProvider:FC<any> = ({children}) => {
-
+  const router = useRouter()
  const [state, dispatch] = useReducer(entriesReducer, Entries_INITIAL_STATE)
+
+ const {enqueueSnackbar} = useSnackbar()
 
  const addNewEntry = async (description: string) => {
   // const newEntry: Entry = {
@@ -29,7 +33,7 @@ export const EntriesProvider:FC<any> = ({children}) => {
   })
  }
 
- const updateEntry = async ({_id, description, status}: Entry) => {
+ const updateEntry = async ({_id, description, status}: Entry, showSnackbar = false) => {
 
   try {
 
@@ -39,11 +43,28 @@ export const EntriesProvider:FC<any> = ({children}) => {
      type: '[Entry] Entry-Updated',
      payload: data,
     })
+    if(showSnackbar) {
+      enqueueSnackbar('Entrada actualizada', {variant: 'success', autoHideDuration: 1500, anchorOrigin: {vertical: 'top', horizontal: 'right'}})
+    }
   } catch (error) {
     console.log(error)
   }
 
  }
+
+  const deleteEntry = async (_id: string) => {
+    try {
+      await entriesApi.delete(`/entries/${_id}`)
+      dispatch({
+       type: '[Entry] Entry-Deleted',
+       payload: _id,
+      })
+      enqueueSnackbar('Entrada eliminada', {variant: 'success', autoHideDuration: 1500, anchorOrigin: {vertical: 'top', horizontal: 'right'}})
+      router.replace('/')
+    } catch (error) {
+      console.log(error)
+    }
+  }
 
  const refreshEntries = async () => {
   const {data} = await entriesApi.get<Entry[]>('/entries')
@@ -60,6 +81,7 @@ export const EntriesProvider:FC<any> = ({children}) => {
     // Methods
     addNewEntry,
     updateEntry,
+    deleteEntry,
   }}>
    {children}
   </EntriesContext.Provider>
